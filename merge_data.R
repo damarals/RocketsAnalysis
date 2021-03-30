@@ -7,6 +7,7 @@ library(tidyr)
 library(ggplot2)
 library(ggthemr)
 library(lubridate)
+library(glue)
 
 ggthemr("fresh")
 
@@ -25,20 +26,22 @@ data <- data %>%
          Minute = if_else(qrt != "1st", (as.numeric(str_remove(qrt, "st")) - 1) * 12 + Minute, Minute)) %>%
   separate(col = path, into = c("AwayName", "HomeName"), sep = 3) %>%
   rename(ID = id, Quarter = qrt, Time = cl, Description = de, HomeScore = hs, AwayScore = vs) %>%
-  select(ID, Quarter, Minute, Second, HomeName, HomeScore, AwayName, AwayScore, Description, locX, locY)
+  inner_join(abb, by = c("HomeName" = "Abb")) %>% rename(HomeNameAll = Name) %>% 
+  inner_join(abb, by = c("AwayName" = "Abb")) %>% rename(AwayNameAll = Name) %>%
+  select(ID, Quarter, Minute, Second, HomeName, HomeNameAll, HomeScore, AwayName, AwayNameAll, AwayScore, Description, locX, locY) 
 
 data_gp <- data %>% 
   pivot_longer(cols = c(HomeName, AwayName), names_to = "Place", values_to = "Team") %>%
   filter(Team == "HOU") %>%
   mutate(Place = str_remove(Place, "Name"),
          Score = if_else(Place == "Home", HomeScore, AwayScore)) %>%
-  select(ID, Place, Quarter, Minute, Second, Score, Description, locX, locY) %>%
+  select(ID, Place, HomeNameAll, AwayNameAll, Quarter, Minute, Second, Score, Description, locX, locY) %>%
   distinct(ID, Place, Quarter, Score, .keep_all = T) %>% 
   filter(!(Description == "Start Period" & Quarter != "1st")) %>%
   group_by(ID, Minute) %>% 
   mutate(ScoreMinute = max(Score)) %>% 
   ungroup() %>% distinct(ID, Minute, .keep_all = T) %>%
-  select(ID, Place, Quarter, Minute, ScoreMinute) %>%
+  select(ID, Place, HomeNameAll, AwayNameAll, Quarter, Minute, ScoreMinute) %>%
   rename(Score = ScoreMinute)
 
 data_gmm <- data %>% 
