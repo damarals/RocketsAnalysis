@@ -41,8 +41,18 @@ data_gp <- data %>%
   group_by(ID, Minute) %>% 
   mutate(ScoreMinute = max(Score)) %>% 
   ungroup() %>% distinct(ID, Minute, .keep_all = T) %>%
-  select(ID, Place, HomeNameAll, AwayNameAll, Quarter, Minute, ScoreMinute) %>%
-  rename(Score = ScoreMinute)
+  select(ID, Place, HomeNameAll, AwayNameAll, Minute, ScoreMinute) %>%
+  rename(Score = ScoreMinute) 
+
+data_gp %>% 
+  right_join(data_gp %>% 
+               distinct(ID, Place, HomeNameAll, AwayNameAll) %>% 
+               mutate(Minute = list(0:48)) %>% 
+               unnest(Minute)) %>%
+  arrange(ID, Minute) %>%
+  group_by(ID) %>%
+  fill(Score) -> data_gp
+
 
 data_gmm <- data %>% 
   pivot_longer(cols = c(HomeName, AwayName), names_to = "Place", values_to = "Team") %>%
