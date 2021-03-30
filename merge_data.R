@@ -34,9 +34,20 @@ data_gp <- data %>%
          Score = if_else(Place == "Home", HomeScore, AwayScore)) %>%
   select(ID, Place, Quarter, Minute, Second, Score, Description, locX, locY) %>%
   distinct(ID, Place, Quarter, Score, .keep_all = T) %>% 
-  filter(!(Description == "Start Period" & Quarter != "1st"))
+  filter(!(Description == "Start Period" & Quarter != "1st")) %>%
+  group_by(ID, Minute) %>% 
+  mutate(ScoreMinute = max(Score)) %>% 
+  ungroup() %>% distinct(ID, Minute, .keep_all = T) %>%
+  select(ID, Place, Quarter, Minute, ScoreMinute) %>%
+  rename(Score = ScoreMinute)
 
-data_gmm <- data_gp %>%
+data_gmm <- data %>% 
+  pivot_longer(cols = c(HomeName, AwayName), names_to = "Place", values_to = "Team") %>%
+  filter(Team == "HOU") %>%
+  mutate(Place = str_remove(Place, "Name"),
+         Score = if_else(Place == "Home", HomeScore, AwayScore)) %>%
+  select(ID, Place, Quarter, Minute, Second, Score, Description, locX, locY) %>%
+  distinct(ID, Place, Quarter, Score, .keep_all = T) %>% 
   filter(Description != "Start Period")
 
 write_csv(data_gp, "data_gp.csv")
