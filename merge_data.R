@@ -13,6 +13,7 @@ ggthemr("fresh")
 
 paths <- dir_ls("./raw_data/", glob = "*.csv")
 data <- map_dfr(paths, read_csv, .id = "path")
+abb <- read_delim("abbreviations_NBA.txt", "\t", col_names = c("Abb", "Name"))
 
 # Preprocessamento
 data <- data %>%
@@ -34,14 +35,15 @@ data_gp <- data %>%
   pivot_longer(cols = c(HomeName, AwayName), names_to = "Place", values_to = "Team") %>%
   filter(Team == "HOU") %>%
   mutate(Place = str_remove(Place, "Name"),
-         Score = if_else(Place == "Home", HomeScore, AwayScore)) %>%
-  select(ID, Place, HomeNameAll, AwayNameAll, Quarter, Minute, Second, Score, Description, locX, locY) %>%
+         Score = if_else(Place == "Home", HomeScore, AwayScore),
+         RivalScore = if_else(Place == "Away", HomeScore, AwayScore)) %>%
+  select(ID, Place, HomeNameAll, AwayNameAll, Quarter, Minute, Second, Score, RivalScore, Description, locX, locY) %>%
   distinct(ID, Place, Quarter, Score, .keep_all = T) %>% 
   filter(!(Description == "Start Period" & Quarter != "1st")) %>%
   group_by(ID, Minute) %>% 
   mutate(ScoreMinute = max(Score)) %>% 
   ungroup() %>% distinct(ID, Minute, .keep_all = T) %>%
-  select(ID, Place, HomeNameAll, AwayNameAll, Minute, ScoreMinute) %>%
+  select(ID, Place, HomeNameAll, AwayNameAll, Minute, ScoreMinute, RivalScore) %>%
   rename(Score = ScoreMinute) 
 
 data_gp %>% 
@@ -51,7 +53,9 @@ data_gp %>%
                unnest(Minute)) %>%
   arrange(ID, Minute) %>%
   group_by(ID) %>%
-  fill(Score) -> data_gp
+  fill(Score) %>% fill(RivalScore) %>%
+  mutate(Home = if_else(Place == "Home", 1, 0)) %>%
+  select(ID, HomeNameAll, AwayNameAll, Home, Minute, RivalScore, Score) -> data_gp
 
 
 data_gmm <- data %>% 
